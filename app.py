@@ -1,10 +1,13 @@
+import os
+import requests
+import faiss
+import numpy as np
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from sentence_transformers import SentenceTransformer
-import requests
-import faiss
-import numpy as np
+
 
 app = Flask(__name__)
 CORS(app)
@@ -22,11 +25,11 @@ collection = db["patient_queries"]
 embed_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # For API Call
-API_KEY = "hf_XXXXXXXXXXXX"
+API_KEY = os.getenv("HUGGINGFACE_API_KEY");
 headers = {"Authorization": f"Bearer {API_KEY}"}
 
 @app.route("/search", methods=["POST"])
-def ask_medical_assistant():
+def search_medical_assistant():
     data = request.json
     user_query = data.get("query")
 
@@ -37,14 +40,12 @@ def ask_medical_assistant():
     response = response = requests.post(
         "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct",
         headers=headers,
-        json={"inputs": "What are the symptoms of flu?"},
+        json={"inputs": user_query },
     )
 
     # Store query and response in MongoDB
     collection.insert_one({"query": user_query, "response": response.json()})
-
     return jsonify({"response": response.json()})
-
 
 if __name__ == "__main__":
     app.run(debug=True)
