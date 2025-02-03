@@ -60,9 +60,10 @@ def search_medical_assistant():
         result = collection.find_one({"query": {"$in": [user_query]}},  {"_id": 0})
         if result:
             matched_results.append(result)
+            break;
 
     if len(matched_results) and len(I[0]):
-        return jsonify({"matches": matched_results})
+        return jsonify({"matches": matched_results[0]})
     else:
         # Generate AI response
         response = response = requests.post(
