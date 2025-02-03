@@ -32,6 +32,11 @@ query_metadata = []
 API_KEY = os.getenv("HUGGINGFACE_API_KEY");
 headers = {"Authorization": f"Bearer {API_KEY}"}
 
+def normalize(vectors):
+    """Normalize vectors for cosine similarity."""
+    faiss.normalize_L2(vectors)
+    return vectors
+
 @app.route("/search", methods=["POST"])
 def search_medical_assistant():
     data = request.json
@@ -41,20 +46,23 @@ def search_medical_assistant():
         return jsonify({"error": "No query provided"}), 400
 
     # Convert Query to Vector
-    vector = embed_model.encode([user_query])[0]
-    vector = np.array([vector], dtype=np.float32)
+    vector = embed_model.encode([user_query], normalize_embeddings=True)
+    vector = np.array(vector, dtype="float32")
 
     # Search in FAISS
-    D, I = index.search(vector.reshape(1, -1), k=3)  # Find top 3 similar queries
+    D, I = index.search(vector, k=3)
 
-    if len(query_metadata):
-        # Retrieve Matched Queries
-        matched_queries = [query_metadata[i] for i in I[0] if i < len(query_metadata)]
-        # MongoDB OR condition
-        query_filter = {"query": {"$in": matched_queries}}  # Alternative to $or
-        results = list(collection.find(query_filter, {"_id": 0}))  # Exclude _id field
-        return jsonify({"matches": results})
+    # Get matched documents from MongoDB
+    matched_results = []
+    for idx in I[0]:  # Get top results
+        if idx == -1:
+            continue  # Ignore invalid results
+        result = collection.find_one({"query": {"$in": [user_query]}},  {"_id": 0})
+        if result:
+            matched_results.append(result)
 
+    if len(matched_results) and len(I[0]):
+        return jsonify({"matches": matched_results})
     else:
         # Generate AI response
         response = response = requests.post(
@@ -63,13 +71,9 @@ def search_medical_assistant():
             json={"inputs": user_query },
         )
 
-
-        # Store in FAISS
-        index.add(vector)
-        query_metadata.append(user_query)
-
         # Store query and response in MongoDB
-        collection.insert_one({"query": user_query, "response": response.json(), "vector": vector.tolist()})
+        collection.insert_one({"query": user_query, "response": response.json(), "vector": vector[0].tolist()})
+        index.add(vector)
         return jsonify({"response": response.json()})
 
 if __name__ == "__main__":
