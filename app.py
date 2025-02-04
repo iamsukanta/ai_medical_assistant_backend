@@ -78,4 +78,4 @@ def search_medical_assistant():
         return jsonify({"response": response.json()})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=os.getenv("API_PORT") if os.getenv("API_PORT") else 5000)
