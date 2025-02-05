@@ -13,7 +13,7 @@ CORS(app)
 load_dotenv()
 
 # Connect to MongoDB
-client = MongoClient(f"mongodb://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@localhost:27017/{os.getenv('DB_NAME')}? authSource=admin')") if os.getenv('APP_ENVIRONMENT') == 'development' else MongoClient('mongodb://localhost:27017/')
+client = MongoClient(f"mongodb://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@localhost:27017/{os.getenv('DB_NAME')}? authSource=admin')") if os.getenv('APP_ENVIRONMENT') == 'production' else MongoClient('mongodb://localhost:27017/')
 db = client["medical_assistant"]
 collection = db["patient_queries"]
 
